@@ -1,0 +1,42 @@
+name: Toy Monitor Bot
+
+on:
+  push:
+    branches: [ main ]
+  repository_dispatch:
+    types: [ trigger_crawler ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: 1. 複製儲存庫檔案
+      uses: actions/checkout@v3
+      with:
+        persist-credentials: true
+
+    - name: 2. 設定 Python 環境
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+
+    - name: 3. 安裝必要套件
+      run: |
+        python -m pip install --upgrade pip > /dev/null
+        pip install requests > /dev/null
+
+    - name: 4. 執行玩具店爬蟲
+      env:
+        TG_TOKEN: ${{ secrets.TG_TOKEN }}
+        TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
+      run: python monitor.py
+
+    - name: 5. 自動將新商品紀錄同步回 GitHub
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add checked_toys_with_img.json || true
+        # 加上 > /dev/null 阻擋所有繁雜的 Git 進度輸出，徹底根治輸出過大問題
+        git commit -m "Update history [skip ci]" -a > /dev/null 2>&1 || echo "No changes"
+        git push > /dev/null 2>&1 || echo "Push skipped"
